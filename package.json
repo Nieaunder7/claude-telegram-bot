@@ -6,7 +6,9 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun --watch run src/index.ts",
-    "typecheck": "bun run --bun tsc --noEmit"
+    "typecheck": "bun run --bun tsc --noEmit",
+    "mother": "bun run mother/index.ts",
+    "mother:dev": "bun --watch run mother/index.ts"
   },
   "devDependencies": {
     "@types/bun": "latest"

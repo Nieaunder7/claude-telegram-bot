@@ -1,0 +1,7 @@
+{
+  "tokens": [
+    { "token": "YOUR_BOT_TOKEN_1", "label": "Bot Instance 1" },
+    { "token": "YOUR_BOT_TOKEN_2", "label": "Bot Instance 2" },
+    { "token": "YOUR_BOT_TOKEN_3", "label": "Bot Instance 3" }
+  ]
+}

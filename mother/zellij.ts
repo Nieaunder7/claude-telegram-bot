@@ -10,13 +10,43 @@ export async function startSession(
   sessionName: string,
   cwd: string
 ): Promise<void> {
+  // Clean up stale EXITED session with the same name
+  const existingSessions = await listSessions();
+  if (existingSessions.has(sessionName)) {
+    const status = existingSessions.get(sessionName);
+    if (status === "exited") {
+      await Bun.$`zellij delete-session ${sessionName} 2>&1`.quiet().nothrow();
+    } else {
+      throw new Error(
+        `Zellij session "${sessionName}" is already running. Use /stop first.`
+      );
+    }
+  }
+
+  // Verify cwd exists
+  const cwdExists =
+    await Bun.$`test -d ${cwd}`.quiet().nothrow();
+  if (cwdExists.exitCode !== 0) {
+    throw new Error(`Working directory does not exist: ${cwd}`);
+  }
+
+  // Verify .env exists in cwd
+  const envExists =
+    await Bun.$`test -f ${cwd}/.env`.quiet().nothrow();
+  if (envExists.exitCode !== 0) {
+    throw new Error(`No .env file found in worktree: ${cwd}/.env`);
+  }
+
+  // Log file for capturing startup errors
+  const logFile = `/tmp/mother-spawn-${sessionName}.log`;
+
   const proc = Bun.spawn(
     [
       "setsid",
       "script",
       "-qefc",
       `exec zellij --session ${sessionName} -- bun run start`,
-      "/dev/null",
+      logFile,
     ],
     {
       cwd,
@@ -32,7 +62,27 @@ export async function startSession(
   await Bun.sleep(3000);
   const alive = await isSessionAlive(sessionName);
   if (!alive) {
-    throw new Error(`Zellij session failed to start: ${sessionName}`);
+    // Read the log for details
+    let details = "";
+    try {
+      const logContent = await Bun.file(logFile).text();
+      const stripped = logContent.replace(/\x1b\[[0-9;]*m/g, "").trim();
+      if (stripped) {
+        details = `\n\nStartup log (${logFile}):\n${stripped.slice(-500)}`;
+      }
+    } catch {}
+
+    // Also check zellij list-sessions output
+    const sessionsResult =
+      await Bun.$`zellij list-sessions 2>&1`.quiet().nothrow();
+    const sessionsText = sessionsResult.text().replace(/\x1b\[[0-9;]*m/g, "").trim();
+
+    throw new Error(
+      `Zellij session failed to start: ${sessionName}\n` +
+      `cwd: ${cwd}\n` +
+      `Zellij sessions: ${sessionsText || "(none)"}` +
+      details
+    );
   }
 }
 

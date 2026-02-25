@@ -15,12 +15,21 @@ export async function createWorktree(name: string): Promise<string> {
   // Ensure base directory exists
   await Bun.$`mkdir -p ${WORKTREE_BASE}`;
 
+  // Clean up stale branch/worktree if left over from a previous failed spawn
+  const branchName = `mother/${name}`;
+  const branchCheck =
+    await Bun.$`git -C ${REPO_ROOT} rev-parse --verify ${branchName} 2>&1`.quiet().nothrow();
+  if (branchCheck.exitCode === 0) {
+    await Bun.$`git -C ${REPO_ROOT} worktree prune 2>&1`.quiet().nothrow();
+    await Bun.$`git -C ${REPO_ROOT} branch -D ${branchName} 2>&1`.quiet().nothrow();
+  }
+
   // Create worktree with a named branch
   const result =
-    await Bun.$`git -C ${REPO_ROOT} worktree add ${worktreePath} -b mother/${name} HEAD 2>&1`.quiet().nothrow();
+    await Bun.$`git -C ${REPO_ROOT} worktree add ${worktreePath} -b ${branchName} HEAD 2>&1`.quiet().nothrow();
 
   if (result.exitCode !== 0) {
-    const stderr = result.text();
+    const stderr = result.text().trim();
     throw new Error(`Failed to create worktree: ${stderr}`);
   }
 

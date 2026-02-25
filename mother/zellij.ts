@@ -1,6 +1,28 @@
 /**
  * Zellij session management for Mother Bot.
+ *
+ * Zellij 0.43 does NOT support `zellij -s <name> -- <command>`.
+ * Instead, we generate a temporary KDL layout file that specifies the
+ * command to run, then launch with `zellij -s <name> -n <layout>`.
  */
+
+import { resolve } from "path";
+
+/**
+ * Write a temporary KDL layout that runs `bun run start` in cwd.
+ */
+function writeLayout(sessionName: string, cwd: string): string {
+  const layoutPath = `/tmp/mother-layout-${sessionName}.kdl`;
+  const kdl = `layout {
+    pane command="bun" {
+        args "run" "start"
+        cwd "${cwd}"
+    }
+}
+`;
+  require("fs").writeFileSync(layoutPath, kdl);
+  return layoutPath;
+}
 
 /**
  * Start a new Zellij session running the bot.
@@ -37,6 +59,9 @@ export async function startSession(
     throw new Error(`No .env file found in worktree: ${cwd}/.env`);
   }
 
+  // Generate KDL layout for this session
+  const layoutPath = writeLayout(sessionName, cwd);
+
   // Log file for capturing startup errors
   const logFile = `/tmp/mother-spawn-${sessionName}.log`;
 
@@ -45,7 +70,7 @@ export async function startSession(
       "setsid",
       "script",
       "-qefc",
-      `exec zellij --session ${sessionName} -- bun run start`,
+      `exec zellij -s ${sessionName} -n ${layoutPath}`,
       logFile,
     ],
     {
@@ -80,6 +105,7 @@ export async function startSession(
     throw new Error(
       `Zellij session failed to start: ${sessionName}\n` +
       `cwd: ${cwd}\n` +
+      `layout: ${layoutPath}\n` +
       `Zellij sessions: ${sessionsText || "(none)"}` +
       details
     );

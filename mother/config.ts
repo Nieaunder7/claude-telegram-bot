@@ -48,6 +48,9 @@ export const REPO_ROOT = resolve(MOTHER_DIR, "..");
 export const WORKTREE_BASE = resolve(MOTHER_DIR, "worktrees");
 export const INSTANCES_FILE = resolve(MOTHER_DIR, "instances.json");
 export const TOKEN_POOL_FILE = resolve(MOTHER_DIR, "tokens.json");
+export const CLONE_BASE_DIR =
+  process.env.CLONE_BASE_DIR ||
+  resolve(process.env.HOME || "/home/nextlab", "repos");
 
 // ============== Token Pool ==============
 

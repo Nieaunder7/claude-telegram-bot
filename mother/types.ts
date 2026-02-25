@@ -13,6 +13,12 @@ export interface Instance {
   allowedUsers: string;
   status: "running" | "stopped";
   createdAt: string;
+  // GitHub issue metadata (optional)
+  issueUrl?: string;
+  issueTitle?: string;
+  repoOwner?: string;
+  repoName?: string;
+  issueNumber?: number;
 }
 
 /** Persistent state file */
